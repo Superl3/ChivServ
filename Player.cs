@@ -16,11 +16,12 @@ namespace ChivServ
         public int TK = 0;
         public string Name = "temp";
         public int Ping = 0;
-        public string GUID = "";
+        public long GUID = 0;
         
-        public Player()
+        public Player(long GUID, string Name)
         {
-            
+            this.GUID = GUID;
+            this.Name = Name;
         }
 
         public enum Team

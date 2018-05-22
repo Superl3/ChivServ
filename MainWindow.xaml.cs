@@ -33,7 +33,11 @@ namespace ChivServ
             public string password;
             public bool status;
             public Timer buffer_check_timer;
+
+            public int ping_limit;
+            public int ping_threshold;
         }
+      
         public byte[] packet = new byte[BUFFER_SIZE];
 
         ServerInformation Server;
@@ -101,8 +105,8 @@ namespace ChivServ
                 if (loginPkt.type == Packet.Type.SERVER_CONNECT) // 유효한 패킷인지 체크 해야함
                 {
                     loginPkt = new Packet(Packet.Type.PASSWORD,
-                            SHA1Util.SHA1HashStringForUTF8String(string.Concat(
-                                Server.password, new Packet(pkt.Take<byte>((int)pkt.Length).ToArray()).getString())));
+                        SHA1Util.SHA1HashStringForUTF8String(string.Concat(
+                        Server.password, new Packet(pkt.Take<byte>((int)pkt.Length).ToArray()).popString())));
                     this.Send(loginPkt.encode());
                     this.recv(new AsyncCallback(loginCallback)); // TODO 비밀번호 실패 처리 해야함
                 }
@@ -212,7 +216,9 @@ namespace ChivServ
 
             Server.buffer_check_timer = new Timer(500);
             Server.buffer_check_timer.Elapsed += new ElapsedEventHandler(buffer_check);
-            
+
+            Server.ping_limit = 100;
+            Server.ping_threshold = 5;
             this.initSocket();
         }
 

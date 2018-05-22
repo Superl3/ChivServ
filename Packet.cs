@@ -21,15 +21,37 @@ namespace ChivServ
         {
             decode(bytes);
         }
-        public Packet(Type type, String str)
+        public Packet(Type type)
+        {
+            this.type = type;
+        }
+        public Packet(Type type,long guid)
+        {
+            this.type = type;
+            this.addGUID(guid);
+        }
+        public Packet(Type type,string str)
         {
             this.type = type;
             this.addString(str);
         }
-
-        public void addGUID(string GUID)
+        public Packet(Type type,long guid,string str)
         {
-            this.data.AddRange(Encoding.UTF8.GetBytes(GUID).Reverse<byte>());
+            this.type = type;
+            this.addGUID(guid);
+            this.addString(str);
+        }
+        public Packet(Type type,long guid, string str,int i)
+        {
+            this.type = type;
+            this.addGUID(guid);
+            this.addString(str);
+            this.addInt(i);
+        }
+
+        public void addGUID(long GUID)
+        {
+            this.data.AddRange(BitConverter.GetBytes(GUID).Reverse<byte>());
         }
 
         public void addInt(int num)
@@ -81,16 +103,16 @@ namespace ChivServ
             return packet.ToArray();
         }
 
-        public ulong getGUID()
+        public long popGUID()
         {
-            ulong num = BitConverter.ToUInt64(this.data.Take<byte>(8).Reverse<byte>().ToArray<byte>(), 0);
+            long GUID = BitConverter.ToInt64(this.data.Take<byte>(8).Reverse<byte>().ToArray<byte>(), 0);
             this.data.RemoveRange(0, 8);
-            return num;
+            return GUID;
         }
 
         public static int getHeaderSize = 6;
         
-        public int getLength()
+        public int popInt()
         {
             int len = BitConverter.ToInt32(this.data.Take<byte>(4).Reverse<byte>().ToArray<byte>(), 0);
             this.data.RemoveRange(0, 4);
@@ -106,9 +128,9 @@ namespace ChivServ
             return BitConverter.ToInt32(rawPacket.Skip<byte>(2 + offset).Take<byte>(4).Reverse<byte>().ToArray<byte>(), 0) + Packet.getHeaderSize;
         }
 
-        public string getString()
+        public string popString()
         {
-            int len = this.getLength();
+            int len = this.popInt();
             string str = Encoding.UTF8.GetString(this.data.Take<byte>(len).ToArray<byte>());
             this.data.RemoveRange(0, len);
             return str;

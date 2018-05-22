@@ -59,6 +59,7 @@
     </ApplicationDefinition>
     <Compile Include="Player.cs" />
     <Compile Include="process_packet.cs" />
+    <Compile Include="send_packet.cs" />
     <Compile Include="SHA1Util.cs" />
     <Page Include="MainWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
