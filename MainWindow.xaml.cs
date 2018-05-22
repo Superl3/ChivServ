@@ -132,7 +132,7 @@ namespace ChivServ
                 int nReadSize = sock.EndReceive(iar);
                 if(nReadSize!=0)
                 { // TODO : 한번에 여러 패킷이 한줄로 들어올 경우가 있음 + 예외처리 << 
-                    recvbuf.AddRange(pkt);
+                    recvbuf.AddRange(pkt.Take<byte>(nReadSize));
                     this.recv(new AsyncCallback(recvCallback));
                 }
                 else
@@ -152,21 +152,22 @@ namespace ChivServ
         private byte[] raw = new byte[BUFFER_SIZE];
 
         private void buffer_check(object sender, ElapsedEventArgs e)
-        {            
-            while (true)
+        {
+            while (recvbuf.Count > 2)
             {
                 Packet p;
-                lock (buffer_lock)
+                if (Packet.valid(recvbuf.Take<byte>(2).ToArray()))
                 {
-                    if (Packet.valid(recvbuf.Take<byte>(2).ToArray()))
+                    p = new Packet(recvbuf.ToArray());
+                    lock (buffer_lock)
                     {
-                        p = new Packet(recvbuf.ToArray());
                         recvbuf.RemoveRange(0, p.getPacketSize());
                     }
-                    else
-                        return;
+                    process_packet(p);
                 }
-                process_packet(p);
+                else
+                    break;
+                
             }
 
             // 버퍼에서 첫 패킷 추출 < lock
@@ -183,24 +184,34 @@ namespace ChivServ
                     player_connect(p);
                     break;
                 case Packet.Type.PLAYER_DISCONNECT:
+                    player_disconnect(p);
                     break;
                 case Packet.Type.NAME_CHANGED:
+                    name_changed(p);
                     break;
                 case Packet.Type.TEAM_CHANGED:
+                    team_changed(p);
                     break;
                 case Packet.Type.PLAYER_CHAT:
+                    player_chat(p);
                     break;
                 case Packet.Type.PING:
+                    ping(p);
                     break;
                 case Packet.Type.KILL:
+                    kill(p);
                     break;
                 case Packet.Type.SUICIDE:
+                    suicide(p);
                     break;
                 case Packet.Type.MAP_LIST:
+                    map_list(p);
                     break;
                 case Packet.Type.MAP_CHANGED:
+                    map_changed(p);
                     break;
                 case Packet.Type.ROUND_END:
+                    round_end(p);
                     break;
                 default:
                     break;
@@ -235,3 +246,4 @@ namespace ChivServ
         }
     }
 }
+ 

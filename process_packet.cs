@@ -9,6 +9,7 @@ namespace ChivServ
     partial class MainWindow
     {
         Dictionary<long, Player> Players = new Dictionary<long, Player>();
+        List<string> Maps = new List<string>();
 
         private static bool isbot(long guid)
         {
@@ -74,6 +75,8 @@ namespace ChivServ
             string chat = p.popString();
 
             add_player(guid, "error");
+            
+            SAY(guid, "당신의 이름 : " + Players[guid].Name);
         }
         private void name_changed(Packet p)
         {
@@ -94,6 +97,10 @@ namespace ChivServ
         {
             int idx = p.popInt();
             string map = p.popString();
+            if (Maps.Count <= idx)
+                Console.WriteLine("잘못된 인덱스 : " + idx);
+            else
+                Console.WriteLine(Maps[idx] + " : " + idx);
         }
         private void round_end(Packet p)
         {
@@ -102,6 +109,7 @@ namespace ChivServ
         private void map_list(Packet p)
         {
             string map = p.popString();
+            Maps.Add(map);
         }
         private void kill(Packet p)
         {
@@ -133,7 +141,7 @@ namespace ChivServ
                 Players[guid].Ping += 1;
                 if (Server.ping_threshold < Players[guid].Ping)
                 {
-                    //KICK_PLAYER(guid);
+                    KICK_PLAYER(guid, "User over" + Server.ping_limit + " cannot play on this server.");
                 }
             }
             else
