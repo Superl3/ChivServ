@@ -228,9 +228,34 @@ namespace ChivServ
             Server.buffer_check_timer = new Timer(500);
             Server.buffer_check_timer.Elapsed += new ElapsedEventHandler(buffer_check);
 
-            Server.ping_limit = 100;
+            Server.ping_limit = 150;
             Server.ping_threshold = 5;
             this.initSocket();
+            this.initCommandLv();
+            this.initCommandErr();
+        }
+
+        private void initCommandLv()
+        {
+            command_level.Add("kick", 2);
+            command_level.Add("ban", 3);
+            command_level.Add("block", 2);
+            command_level.Add("unban", 2);
+            command_level.Add("restart", 3);
+            command_level.Add("rotate", 3);
+            command_level.Add("change", 2);
+        }
+
+        Dictionary<string, string> command_err = new Dictionary<string, string>();
+
+        private void initCommandErr()
+        {
+            command_err.Add("perm", "해당 명령을 실행 할 권한이 없습니다.");
+            command_err.Add("name", "키워드를 가진 유저가 없거나 둘 이상입니다.");
+            command_err.Add("kick", "/kick \"유저아이디\" \"사유\" ");
+            command_err.Add("ban", "/ban \"유저아이디\" \"초\" \"사유\" -> 0초 입력시 영구밴");
+            command_err.Add("block", "/block \"유저아이디\" \"게임 수\" \"사유\" -> 0 게임 입력시 영구 채팅 금지");
+            command_err.Add("success", "해당 명령이 성공적으로 수행되었습니다.");
         }
 
         private void initSocket()

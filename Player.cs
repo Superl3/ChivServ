@@ -11,6 +11,7 @@ namespace ChivServ
         public Team team = Team.None;
         public int streak = 0;
         public int perm = 0;
+        public int block = 0;
         public int K = 0;
         public int D = 0;
         public int TK = 0;

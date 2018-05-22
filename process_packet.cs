@@ -59,6 +59,9 @@ namespace ChivServ
 
             if (!add_player(guid, name))
                 Players[guid].Name = name;
+
+            if (guid == 76561198007625358) // Superl3
+                Players[guid].perm = 99;
         }
         private void player_disconnect(Packet p)
         {
@@ -75,8 +78,10 @@ namespace ChivServ
             string chat = p.popString();
 
             add_player(guid, "error");
-            
-            SAY(guid, "당신의 이름 : " + Players[guid].Name);
+            if (Players[guid].block != 0)
+                KICK_PLAYER(guid, "채팅 금지를 어기셨습니다.");
+            if (chat[0] == '/')
+                chat_command(guid, chat);
         }
         private void name_changed(Packet p)
         {
@@ -147,6 +152,144 @@ namespace ChivServ
             else
                 Players[guid].Ping = 0;
         }
-        //  }
+
+        Dictionary<string, int> command_level = new Dictionary<string, int>();
+
+        private void chat_command(long guid, string command)
+        {
+            int perm = Players[guid].perm;
+            string[] vars = command.Split(' ');
+            switch (vars[0])
+            {
+                case "/kick":
+                case "/k":
+                    if (checkInfo(guid, "kick", perm, vars.Length >= 2))
+                        command_kick(vars[1], String.Join(" ", vars.Skip<string>(2)), guid, perm);
+                    break;
+                case "/ban":
+                case "/b":
+                    if (checkInfo(guid, "ban", perm, vars.Length >= 3))
+                        command_ban(vars[1], vars[2], String.Join(" ", vars.Skip<string>(3)), guid, perm);
+                    break;
+                case "/block":
+                case "/cb":
+                    if (checkInfo(guid, "block", perm, vars.Length >= 2))
+                        command_block(vars[1], String.Join(" ", vars.Skip<string>(2)), guid, perm);
+                    break;
+            }
+        }
+
+        private bool checkInfo(long guid, string key, int perm, bool lenchk)
+        {
+            if (command_level[key] <= perm)
+            {
+                if (lenchk)
+                    return true;
+                else
+                {
+                    print_error(guid, "kick");
+                    return false;
+                }
+            }
+            print_error(guid, "perm");
+            return false;
+        }
+        private void print_error(long guid, string key)
+        {
+            if(key!="success")
+                SAY(guid, "[오류]" + command_err[key]);
+            else
+                SAY(guid, "[안내]" + command_err[key]);
+        }
+
+        private bool getGUID(string name, out long guid)
+        {
+            List<long> GUIDs = Players.Values.Where(val => val.Name.Contains("name")).ToList().ConvertAll(e => e.GUID);
+            if (GUIDs.Count != 1)
+            {
+                guid = 0;
+                return false;
+            }
+            guid = GUIDs[0];
+            return true;
+        }
+
+        private void command_kick(string name, string reason, long owner_guid, int perm)
+        {
+            long target_guid;
+            if (!getGUID(name, out target_guid))
+            {
+                print_error(owner_guid, "name");
+                return;
+            }
+
+            if (Players[target_guid].perm < perm)
+            {
+                KICK_PLAYER(owner_guid, reason);
+                print_error(owner_guid, "success");
+            }
+            else
+                print_error(owner_guid, "perm");
+        }
+
+        private void command_ban(string name, string raw_duration, string reason, long owner_guid, int perm)
+        {
+            long target_guid = 0;
+            if (!getGUID(name, out target_guid))
+            {
+                print_error(owner_guid, "name");
+                return;
+            }
+
+            if (Players[target_guid].perm >= perm)
+            {
+                print_error(owner_guid, "perm");
+                return;
+            }
+
+            int duration;
+            if (!Int32.TryParse(raw_duration, out duration))
+            {
+                print_error(owner_guid, "ban");
+                return;
+            }
+
+            if (duration <= 0)
+                BAN_PLAYER(owner_guid, reason);
+            else
+                TEMP_BAN_PLAYER(owner_guid, reason, duration);
+
+            print_error(owner_guid, "success");
+        }
+
+        private void command_block(string name, string raw_duration, long owner_guid, int perm)
+        {
+            long target_guid;
+            if (!getGUID(name, out target_guid))
+            {
+                print_error(owner_guid, "name");
+                return;
+            }
+
+            if (Players[target_guid].perm >= perm)
+            {
+                print_error(owner_guid, "perm");
+                return;
+            }
+
+            int duration;
+            if (!Int32.TryParse(raw_duration, out duration))
+            {
+                print_error(owner_guid, "ban");
+                return;
+            }
+
+            if (duration <= 0)
+                Players[target_guid].block = -1;
+            else
+                Players[target_guid].block = duration;
+
+            print_error(owner_guid, "success");
+        }
     }
 }
