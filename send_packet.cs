@@ -24,6 +24,10 @@ namespace ChivServ
         {
             Send(new Packet(Packet.Type.CHANGE_MAP, map).encode());
         }
+        public void ROTATE_MAP()
+        {
+            Send(new Packet(Packet.Type.ROTATE_MAP).encode());
+        }
         public void KICK_PLAYER(long guid, string reason)
         {
             Send(new Packet(Packet.Type.KICK_PLAYER, guid, reason).encode());

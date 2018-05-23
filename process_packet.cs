@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Timers;
 
 namespace ChivServ
 {
@@ -34,17 +35,31 @@ namespace ChivServ
             if (!isbot(guid))
             {
                 add_player(guid, "error");
-                Players[guid].D += 1;
+                Players[guid].onD += 1;
+                Players[guid].totalD += 1;
                 Players[guid].streak = 0;
             }
         }
-        private void player_kill(long guid)
+        private void player_kill(long guid, long vic_guid)
         {
             if (!isbot(guid))
             {
                 add_player(guid, "error");
-                Players[guid].K += 1;
-                Players[guid].streak += 1;
+                if (!isbot(vic_guid))
+                {
+                    if (Players[guid].team == Players[vic_guid].team && Players[guid].team != Player.Team.None)
+                    {
+                        Players[guid].TK += 1;
+                        Players[guid].streak = 0;
+                    }
+                    else
+                    {
+                        Players[guid].onK += 1;
+                        Players[guid].totalK += 1;
+                        Players[guid].streak += 1;
+
+                    }
+                }
             }
         }
 
@@ -102,6 +117,7 @@ namespace ChivServ
         {
             int idx = p.popInt();
             string map = p.popString();
+            Server.map = map;
             if (Maps.Count <= idx)
                 Console.WriteLine("잘못된 인덱스 : " + idx);
             else
@@ -121,7 +137,7 @@ namespace ChivServ
             long killer_guid = p.popGUID();
             long victim_guid = p.popGUID();
 
-            player_kill(killer_guid);
+            player_kill(killer_guid, victim_guid);
             player_dead(victim_guid);
         }
         private void suicide(Packet p)
@@ -146,7 +162,7 @@ namespace ChivServ
                 Players[guid].Ping += 1;
                 if (Server.ping_threshold < Players[guid].Ping)
                 {
-                    KICK_PLAYER(guid, "User over" + Server.ping_limit + " cannot play on this server.");
+                    KICK_PLAYER(guid, "Over" + Server.ping_limit + " ping is not allowed to play in here.");
                 }
             }
             else
@@ -176,6 +192,33 @@ namespace ChivServ
                     if (checkInfo(guid, "block", perm, vars.Length >= 2))
                         command_block(vars[1], String.Join(" ", vars.Skip<string>(2)), guid, perm);
                     break;
+                case "/restart":
+                case "/reset":
+                    if (checkInfo(guid, "restart", perm, vars.Length == 1))
+                        command_restart(guid);
+                    break;
+                case "/rotate":
+                case "/next":
+                    if (checkInfo(guid, "rotate", perm, vars.Length == 1))
+                        command_rotate(guid);
+                    break;
+                case "/change":
+                case "/map":
+                    if (checkInfo(guid, "change", perm, vars.Length == 2))
+                        command_change(vars[1], guid);
+                    break;
+                case "/cancel":
+                    if (checkInfo(guid, "cancel", perm, vars.Length == 1))
+                        command_cancel(guid);
+                    break;
+                case "/maplist":
+                    if (checkInfo(guid, "maplist", perm, vars.Length == 2))
+                        command_maplist(vars[1], guid);
+                    break;
+                case "/promote":
+                    if (checkInfo(guid, "promote", perm, vars.Length == 3))
+                        command_promote(vars[1], vars[2], guid, perm);
+                    break;
             }
         }
 
@@ -196,7 +239,7 @@ namespace ChivServ
         }
         private void print_error(long guid, string key)
         {
-            if(key!="success")
+            if (key != "success")
                 SAY(guid, "[오류]" + command_err[key]);
             else
                 SAY(guid, "[안내]" + command_err[key]);
@@ -211,6 +254,14 @@ namespace ChivServ
                 return false;
             }
             guid = GUIDs[0];
+            return true;
+        }
+
+        private bool getMAP(string map, out string res)
+        {
+            res = String.Join(" ", Maps.Where(val => val.Contains("map")));
+            if (res.Contains(" "))
+                return false;
             return true;
         }
 
@@ -289,6 +340,102 @@ namespace ChivServ
             else
                 Players[target_guid].block = duration;
 
+            print_error(owner_guid, "success");
+        }
+
+        private string next_map = "";
+        private void autosave(object sender, ElapsedEventArgs e)
+        {
+            this.writeDB(true);
+        }
+        private void map_change(object sender, ElapsedEventArgs e)
+        {
+            if (next_map == "nextmap")
+                ROTATE_MAP();
+            else
+                CHANGE_MAP(next_map);
+        }
+        private void command_restart(long owner_guid)
+        {
+            SAY_ALL("[안내] 현재 맵으로 3초 뒤 재시작됩니다.");
+            Server.map_change.Start();
+            next_map = Server.map;
+            //CHANGE_MAP(Server.map);
+            print_error(owner_guid, "success");
+        }
+        private void command_rotate(long owner_guid)
+        {
+            SAY_ALL("[안내] 다음 맵으로 3초 뒤 변경됩니다.");
+            Server.map_change.Start();
+            next_map = "nextmap";
+            //ROTATE_MAP();
+            print_error(owner_guid, "success");
+        }
+        private void command_change(string map, long owner_guid)
+        {
+
+            if (!getMAP(map, out map) || map == "")
+            {
+                print_error(owner_guid, "map");
+                return;
+            }
+
+            SAY_ALL("[안내] " + map + " 맵으로 3초 뒤 변경됩니다.");
+            Server.map_change.Start();
+            next_map = map;
+            //CHANGE_MAP(map);
+            print_error(owner_guid, "success");
+        }
+        private void command_cancel(long owner_guid)
+        {
+            if (Server.map_change.Enabled)
+            {
+                Server.map_change.Stop();
+                print_error(owner_guid, "success");
+            }
+            else
+            {
+                print_error(owner_guid, "cancel");
+            }
+        }
+        private void command_maplist(string map, long owner_guid)
+        {
+
+            if (getMAP(map, out map))
+            {
+                print_error(owner_guid, "maplist");
+                return;
+            }
+            string[] raw = map.Split(' ');
+            foreach (string line in raw)
+                SAY(owner_guid, line);
+            print_error(owner_guid, "success");
+        }
+
+        private void command_promote(string name, string raw_perm, long owner_guid, int perm)
+        {
+            long target_guid = 0;
+            if (!getGUID(name, out target_guid))
+            {
+                print_error(owner_guid, "name");
+                return;
+            }
+
+            if (Players[target_guid].perm >= perm)
+            {
+                print_error(owner_guid, "perm");
+                return;
+            }
+
+            int target_perm;
+            if (!Int32.TryParse(raw_perm, out target_perm) || target_perm >= perm || target_perm < 0)
+            {
+                print_error(owner_guid, "promote");
+                return;
+            }
+            
+            Players[target_guid].perm = target_perm;
+            SAY(target_guid, "[안내] 권한이 변경되었습니다.");
             print_error(owner_guid, "success");
         }
     }

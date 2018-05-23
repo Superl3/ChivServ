@@ -57,6 +57,7 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
+    <Compile Include="database.cs" />
     <Compile Include="Player.cs" />
     <Compile Include="process_packet.cs" />
     <Compile Include="send_packet.cs" />

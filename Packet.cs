@@ -10,7 +10,7 @@ namespace ChivServ
     class Packet
     {
         public Type type;
-        public int len;
+        public int len = 0;
         public List<byte> data = new List<byte>();
 
         public Packet(byte[] bytes)

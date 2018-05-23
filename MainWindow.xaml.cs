@@ -2,18 +2,7 @@
 using System.Net;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Security.Cryptography;
-using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
 using System.Net.Sockets;
 using System.Timers;
 
@@ -32,7 +21,10 @@ namespace ChivServ
             public Socket cbSock;
             public string password;
             public bool status;
-            public Timer buffer_check_timer;
+            public Timer buffer_check;
+            public Timer map_change;
+            public Timer autosave;
+            public string map;
 
             public int ping_limit;
             public int ping_threshold;
@@ -112,7 +104,7 @@ namespace ChivServ
                 }
                 else if (pkt.Length > 0 && loginPkt.type == Packet.Type.SERVER_CONNECT_SUCCESS) { 
                     Server.status = true;
-                    Server.buffer_check_timer.Start();
+                    Server.buffer_check.Start();
                     Server.cbSock.Blocking = false;
                     this.recv(new AsyncCallback(recvCallback)); // TODO 비밀번호 실패 처리 해야함
                 }
@@ -150,7 +142,7 @@ namespace ChivServ
 
         private static object buffer_lock = new object();
         private byte[] raw = new byte[BUFFER_SIZE];
-
+        // TODO timeflow를 만들어서 X
         private void buffer_check(object sender, ElapsedEventArgs e)
         {
             while (recvbuf.Count > 2)
@@ -221,15 +213,28 @@ namespace ChivServ
         private void initServer()
         {
             Server = new ServerInformation();
+
             Server.ipep = new IPEndPoint(IPAddress.Parse("127.0.0.1"),27960);
             Server.password = "l3repus";
-            Server.status = false;
-
-            Server.buffer_check_timer = new Timer(500);
-            Server.buffer_check_timer.Elapsed += new ElapsedEventHandler(buffer_check);
 
             Server.ping_limit = 150;
             Server.ping_threshold = 5;
+
+            Server.map = "";
+            Server.status = false;
+            Server.buffer_check = new Timer(500);
+            Server.buffer_check.Elapsed += new ElapsedEventHandler(buffer_check);
+
+            Server.autosave = new Timer(1800000);
+            Server.autosave.AutoReset = true;
+            Server.autosave.Elapsed += new ElapsedEventHandler(autosave);
+
+            Server.map_change = new Timer(3000);
+            Server.map_change.Elapsed += new ElapsedEventHandler(map_change);
+
+            this.readDB();
+            Server.autosave.Start();
+
             this.initSocket();
             this.initCommandLv();
             this.initCommandErr();
@@ -244,18 +249,28 @@ namespace ChivServ
             command_level.Add("restart", 3);
             command_level.Add("rotate", 3);
             command_level.Add("change", 2);
+            command_level.Add("maplist", 2);
+            command_level.Add("cancel", 3);
+            command_level.Add("perm", 4);
         }
 
         Dictionary<string, string> command_err = new Dictionary<string, string>();
 
         private void initCommandErr()
         {
+            command_err.Add("success", "해당 명령이 성공적으로 수행되었습니다.");
             command_err.Add("perm", "해당 명령을 실행 할 권한이 없습니다.");
             command_err.Add("name", "키워드를 가진 유저가 없거나 둘 이상입니다.");
+            command_err.Add("map", "키워드를 가진 맵이 없거나 둘 이상입니다.");
             command_err.Add("kick", "/kick \"유저아이디\" \"사유\" ");
             command_err.Add("ban", "/ban \"유저아이디\" \"초\" \"사유\" -> 0초 입력시 영구밴");
             command_err.Add("block", "/block \"유저아이디\" \"게임 수\" \"사유\" -> 0 게임 입력시 영구 채팅 금지");
-            command_err.Add("success", "해당 명령이 성공적으로 수행되었습니다.");
+            command_err.Add("restart", "/restart");
+            command_err.Add("rotate", "/rotate");
+            command_err.Add("change", "/change \"맵이름\"");
+            command_err.Add("cancel", "/cancel -> 맵 변경이 진행되고 있지 않습니다.");
+            command_err.Add("promote", "/promote \"유저아이디\" \"레벨\" -> 자신의 레벨보다 낮아야 합니다.");
+            command_err.Add("maplist", "/maplist \"맵이름\" -> 키워드를 가진 맵이 없습니다.");
         }
 
         private void initSocket()

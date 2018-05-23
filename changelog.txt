@@ -1,4 +1,14 @@
 ============================
-2018-05-22 11:03 AM GMT +9:00
+2018-05-22 11:03 GMT +9:00
 Inital commit
+============================
+2018-05-23 17:08 GMT +9:00
+packet processing done
+various chat command added
+accounts can be saved on local folder now
+permission-based chat-command system applied
+detailed information will be added later*
+(NOT-TESTED-YET)
+
+TODO : write db when server connection ended
 ============================
