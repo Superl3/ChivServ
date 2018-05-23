@@ -103,7 +103,6 @@ namespace ChivServ
                     this.recv(new AsyncCallback(loginCallback)); // TODO 비밀번호 실패 처리 해야함
                 }
                 else if (pkt.Length > 0 && loginPkt.type == Packet.Type.SERVER_CONNECT_SUCCESS) { 
-                    Server.status = true;
                     Server.buffer_check.Start();
                     Server.cbSock.Blocking = false;
                     this.recv(new AsyncCallback(recvCallback)); // TODO 비밀번호 실패 처리 해야함
@@ -111,7 +110,7 @@ namespace ChivServ
             }
             catch (SocketException se)
             {
-                Console.WriteLine(se.ErrorCode.ToString());
+                Console.WriteLine("logincallback" + se.ErrorCode.ToString());
                 this.initSocket();
             }
         }
@@ -135,7 +134,7 @@ namespace ChivServ
             }
             catch (SocketException se)
             {
-                Console.WriteLine(se.ErrorCode.ToString());
+                Console.WriteLine("recvCallback" + se.ErrorCode.ToString());
                 this.initSocket();
             }
         }
@@ -230,11 +229,10 @@ namespace ChivServ
             Server.autosave.Elapsed += new ElapsedEventHandler(autosave);
 
             Server.map_change = new Timer(3000);
+            Server.map_change.AutoReset = false;
             Server.map_change.Elapsed += new ElapsedEventHandler(map_change);
 
             this.readDB();
-            Server.autosave.Start();
-
             this.initSocket();
             this.initCommandLv();
             this.initCommandErr();
@@ -273,16 +271,35 @@ namespace ChivServ
             command_err.Add("maplist", "/maplist \"맵이름\" -> 키워드를 가진 맵이 없습니다.");
         }
 
+        
+
         private void initSocket()
         {
             Server.Sock = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+            if(Server.status)
+            {
+                this.writeDB(false);
+                this.readDB();
+                Server.autosave.Stop();
+                Server.map_change.Stop();
+                Server.status = false;
+            }
             this.BeginConnect();
         }
 
         public MainWindow()
         {
+            AppDomain.CurrentDomain.ProcessExit += new EventHandler(OnProcessExit);
             InitializeComponent();
             initServer();
+        }
+
+        void OnProcessExit(object sender, EventArgs e)
+        {
+            if(Server.status)
+            {
+                this.writeDB(false);
+            }
         }
     }
 }

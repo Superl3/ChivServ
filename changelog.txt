@@ -12,3 +12,8 @@ detailed information will be added later*
 
 TODO : write db when server connection ended
 ============================
+2018-05-23 21:40 GMT +9:00
+getMAP / getGUID fixed
+(write db when server connection ended) done
+
+TODO : log playerchat

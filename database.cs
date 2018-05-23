@@ -9,7 +9,7 @@ namespace ChivServ
 {
     partial class MainWindow
     {
-        private string path = "";
+        private string path = "data";
         
         private void readDB()
         {

@@ -29,7 +29,7 @@ namespace ChivServ
             }
             return false;
         }
-
+        
         private void player_dead(long guid)
         {
             if (!isbot(guid))
@@ -90,7 +90,7 @@ namespace ChivServ
         private void player_chat(Packet p)
         {
             long guid = p.popGUID();
-            string chat = p.popString();
+            string chat = p.popString().Trim();
 
             add_player(guid, "error");
             if (Players[guid].block != 0)
@@ -116,7 +116,7 @@ namespace ChivServ
         private void map_changed(Packet p)
         {
             int idx = p.popInt();
-            string map = p.popString();
+            string map = p.popString().Trim();
             Server.map = map;
             if (Maps.Count <= idx)
                 Console.WriteLine("잘못된 인덱스 : " + idx);
@@ -127,8 +127,15 @@ namespace ChivServ
         {
             int win = p.popInt();
         }
+
         private void map_list(Packet p)
         {
+            if (!Server.status)
+            {
+                Server.autosave.Start();
+                Server.status = true;
+            }
+            
             string map = p.popString();
             Maps.Add(map);
         }
@@ -146,7 +153,6 @@ namespace ChivServ
 
             player_dead(victim_guid);
         }
-
         private void ping(Packet p)
         {
             long guid = p.popGUID();
@@ -175,6 +181,7 @@ namespace ChivServ
         {
             int perm = Players[guid].perm;
             string[] vars = command.Split(' ');
+            Console.WriteLine(command);
             switch (vars[0])
             {
                 case "/kick":
@@ -219,6 +226,9 @@ namespace ChivServ
                     if (checkInfo(guid, "promote", perm, vars.Length == 3))
                         command_promote(vars[1], vars[2], guid, perm);
                     break;
+                case "/debug":
+                      command_debug();
+                      break;
             }
         }
 
@@ -230,7 +240,7 @@ namespace ChivServ
                     return true;
                 else
                 {
-                    print_error(guid, "kick");
+                    print_error(guid, key);
                     return false;
                 }
             }
@@ -247,7 +257,7 @@ namespace ChivServ
 
         private bool getGUID(string name, out long guid)
         {
-            List<long> GUIDs = Players.Values.Where(val => val.Name.Contains("name")).ToList().ConvertAll(e => e.GUID);
+            List<long> GUIDs = Players.Values.Where(val => val.Name.ToLower().Contains(name.ToLower())).ToList().ConvertAll(e => e.GUID);
             if (GUIDs.Count != 1)
             {
                 guid = 0;
@@ -259,7 +269,7 @@ namespace ChivServ
 
         private bool getMAP(string map, out string res)
         {
-            res = String.Join(" ", Maps.Where(val => val.Contains("map")));
+            res = String.Join(" ", Maps.Where(val => val.ToLower().Contains(map.ToLower())));
             if (res.Contains(" "))
                 return false;
             return true;
@@ -437,6 +447,12 @@ namespace ChivServ
             Players[target_guid].perm = target_perm;
             SAY(target_guid, "[안내] 권한이 변경되었습니다.");
             print_error(owner_guid, "success");
+        }
+
+        private void command_debug()
+        {
+            foreach (string Map in Maps)
+                Console.WriteLine(Map);
         }
     }
 }
