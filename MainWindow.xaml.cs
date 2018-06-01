@@ -64,9 +64,8 @@ namespace ChivServ
             {
                 if(se.SocketErrorCode == SocketError.NotConnected)
                 {
-                    Console.WriteLine("소켓 연결 실패");
+                    Console.WriteLine("서버에 연결 실패");
                 }
-                Console.WriteLine("에러 + " + se.NativeErrorCode);
                 initSocket();
             }
         }
@@ -128,7 +127,7 @@ namespace ChivServ
                 }
                 else
                 {
-                    Console.WriteLine("비정상적인 신호, 종료합니다.");
+                    Console.WriteLine("비정상적인 패킷 혹은 연결이 끊겼습니다.");
                     this.initSocket();
                 }
             }
@@ -233,11 +232,135 @@ namespace ChivServ
             Server.map_change.Elapsed += new ElapsedEventHandler(map_change);
 
             this.readDB();
+            this.initMap();
             this.initSocket();
             this.initCommandLv();
             this.initCommandErr();
         }
 
+        private void initMap()
+        {
+            Maps.Clear();
+            Maps.Add("AOCTO-Battlegrounds_v3_p".ToLower());//
+            Maps.Add("AOCTO-Darkforest_p".ToLower());//
+            Maps.Add("AOCTO-Hillside_p".ToLower());//
+            Maps.Add("AOCTO-Stoneshill_p".ToLower());//
+            Maps.Add("AOCTO-Citadel_p".ToLower());//   
+            Maps.Add("AOCTO-Coldfront_p".ToLower());//
+            Maps.Add("AOCTO-Outpost_p".ToLower());//  
+            Maps.Add("AOCTO-Belmez-CM_p".ToLower());//
+            Maps.Add("AOCLTS-Belmez-CM_p".ToLower());//
+            Maps.Add("AOCTO-CastleAssault-CM_p".ToLower());//
+            Maps.Add("AOCFFA-CastleAssault-CM_p".ToLower());//
+            Maps.Add("AOCLTS-CastleAssault-CM_p".ToLower());//
+            Maps.Add("AOCTD-CastleAssault-CM_p".ToLower());// 
+            Maps.Add("AOCDuel-CastleAssault-CM_p".ToLower());//
+            Maps.Add("AOCTO-Cove-CM_p".ToLower());//            
+            Maps.Add("AOCFFA-Cove-CM_p".ToLower());//           
+            Maps.Add("AOCLTS-Cove-CM_p".ToLower());//           
+            Maps.Add("AOCTD-Cove-CM_p".ToLower());//            
+            Maps.Add("AOCTO-DrunkenBazaar-CM_p".ToLower());//
+            Maps.Add("AOCTO-KingsGarden-CM_p".ToLower());//   
+            Maps.Add("AOCTO-Hideout-CM_p".ToLower());//        
+            Maps.Add("AOCTO-Irilla-CM_p".ToLower());//             
+            Maps.Add("AOCTO-Shore-CM_p".ToLower());//           
+            Maps.Add("AOCCTF-Colosseum-CM_p".ToLower());//    
+            Maps.Add("AOCDuel-Colosseum-CM_p".ToLower());//   
+            Maps.Add("AOCFFA-ColosseumClassicDuel-CM_p".ToLower());//    
+            Maps.Add("AOCFFA-Colosseum-CM_p".ToLower());//                  
+            Maps.Add("AOCLTS-Colosseum-CM_p".ToLower());//                  
+            Maps.Add("AOCFFA-Forest-CM_p".ToLower());//                        
+            Maps.Add("AOCLTS-Impasse-CM_p".ToLower());//                      
+            Maps.Add("AOCLTS-NoMercy-CM_p".ToLower());//                     
+            Maps.Add("AOCKOTH-Colosseum-CM_p".ToLower());//                
+            Maps.Add("AOCKOTH-Impasse-CM_p".ToLower());//                    
+            Maps.Add("AOCTD-Colosseum-CM_p".ToLower());//                    
+            Maps.Add("AOCTD-ColosseumPendulum-CM_p".ToLower());//        
+            Maps.Add("AOCTD-Forest-CM_p".ToLower());//                          
+            Maps.Add("AOCTD-Impasse-CM_p".ToLower());//                        
+            Maps.Add("TO2-Hordetown".ToLower());//                            
+            Maps.Add("AOCCTF-Frigid_p".ToLower());//                               
+            Maps.Add("AOCCTF-Moor_p".ToLower());//                               
+            Maps.Add("AOCCTF-Ruins_Large_p".ToLower());//                       
+            Maps.Add("AOCCTF-Ruins_p".ToLower());//                               
+            Maps.Add("AOCDuel-Arena_Flat_p".ToLower());//                        
+            Maps.Add("AOCDuel-Arena_p".ToLower());//                              
+            Maps.Add("AOCDuel-Bridge_p".ToLower());//                             
+            Maps.Add("AOCDuel-Cistern_p".ToLower());//                             
+            Maps.Add("AOCDuel-Courtyard_p".ToLower());//                         
+            Maps.Add("AOCDuel-Dininghall_p".ToLower());//                         
+            Maps.Add("AOCDuel-FrostPeak_p".ToLower());//                         
+            Maps.Add("AOCDuel-Mines_p".ToLower());//                              
+            Maps.Add("AOCDuel-Moor_p".ToLower());//                               
+            Maps.Add("AOCDuel-Shaft_p".ToLower());//                                
+            Maps.Add("AOCDuel-Shipyard_p".ToLower());//                            
+            Maps.Add("AOCDuel-ThroneRoom_p".ToLower());//                       
+            Maps.Add("AOCDuel-Tower_p".ToLower());//                               
+            Maps.Add("AOCFFA-Arena3_p".ToLower());//                               
+            Maps.Add("AOCFFA-Darkforest_Cistern_p".ToLower());//                 
+            Maps.Add("AOCFFA-Darkforest_Valley_p".ToLower());//                  
+            Maps.Add("AOCFFA-HillsidePyre_p".ToLower());//                         
+            Maps.Add("AOCFFA-Hillside_p".ToLower());//                              
+            Maps.Add("AOCFFA-Moor_p".ToLower());//                                
+            Maps.Add("AOCFFA-Ruins_p".ToLower());//                                
+            Maps.Add("AOCFFA-Tavern_p".ToLower());//                              
+            Maps.Add("AOCFFA-ThroneRoomXL_p".ToLower());//                   
+            Maps.Add("AOCFFA-StoneshillVillage_p".ToLower());//                  
+            Maps.Add("AOCFFA-Bridge_p".ToLower());//                              
+            Maps.Add("AOCFFA-Cistern_p".ToLower());//                              
+            Maps.Add("AOCFFA-Courtyard_p".ToLower());//                                     =Courtyard
+            Maps.Add("AOCFFA-Dininghall_p".ToLower());//                                     =Dining Hall
+            Maps.Add("AOCFFA-FrostPeak_p".ToLower());//                                     =Frost Peak
+            Maps.Add("AOCFFA-Mines_p".ToLower());//                                     =Mines
+            Maps.Add("AOCFFA-Shipyard_p".ToLower());//                                     =Shipyard
+            Maps.Add("AOCLTS-Frigid_p".ToLower());//                                     =Frigid
+            Maps.Add("AOCLTS-ArgonsWall_p".ToLower());//                                     =Argon's Wall
+            Maps.Add("AOCLTS-Arena3_p".ToLower());//                                     =Arena
+            Maps.Add("AOCLTS-Battlegrounds_Farm_p".ToLower());//                                     =Battlegrounds Farm
+            Maps.Add("AOCLTS-Battlegrounds_p".ToLower());//                                     =Battlegrounds
+            Maps.Add("AOCLTS-Darkforest_XL_p".ToLower());//                                     =Dark Forest
+            Maps.Add("AOCLTS-Darkforest_Valley_p".ToLower());//                                     =Dark Forest Valley
+            Maps.Add("AOCLTS-Hillside_p".ToLower());//                                     =Hillside
+            Maps.Add("AOCLTS-HillsidePyre_p".ToLower());//                                     =Hillside Pyre
+            Maps.Add("AOCLTS-Moor_p".ToLower());//                                     =Moor
+            Maps.Add("AOCLTS-Moor_Large_p".ToLower());//                                     =Moor (large)
+            Maps.Add("AOCLTS-Ruins_p".ToLower());//                                     =Ruins
+            Maps.Add("AOCLTS-Ruins_Large_p".ToLower());//                                     =Ruins (large)
+            Maps.Add("AOCLTS-StoneshillVillage_p".ToLower());//                                     =Stoneshill Village
+            Maps.Add("AOCLTS-ThroneRoom_p".ToLower());//                                     =Throne Room
+            Maps.Add("AOCLTS-Bridge_p".ToLower());//                                     =Bridge
+            Maps.Add("AOCLTS-Cistern_p".ToLower());//                                     =Cistern
+            Maps.Add("AOCLTS-Courtyard_p".ToLower());//                                     =Courtyard
+            Maps.Add("AOCLTS-Dininghall_p".ToLower());//                                     =Dining Hall
+            Maps.Add("AOCLTS-FrostPeak_p".ToLower());//                                     =Frost Peak
+            Maps.Add("AOCLTS-Mines_p".ToLower());//                                     =Mines
+            Maps.Add("AOCLTS-Shipyard_p".ToLower());//                                     =Shipyard
+            Maps.Add("AOCKOTH-Arena3_p".ToLower());//                                     =Arena
+            Maps.Add("AOCKOTH-Hillside_p".ToLower());//                                     =Hillside
+            Maps.Add("AOCKOTH-Moor_p".ToLower());//                                     =Moor
+            Maps.Add("AOCKOTH-Darkforest_Valley_p".ToLower());//                                     =Dark Forest Valley
+            Maps.Add("AOCTD-Frigid_p".ToLower());//                                     =Frigid
+            Maps.Add("AOCTD-ArgonsWall_p".ToLower());//                                     =Argon's Wall
+            Maps.Add("AOCTD-Ruins_p".ToLower());//                                     =Ruins
+            Maps.Add("AOCTD-ThroneRoom_p".ToLower());//                                     =Throne Room
+            Maps.Add("AOCTD-StoneshillVillage_p".ToLower());//                                     =Stoneshill Village
+            Maps.Add("AOCTD-Moor_p".ToLower());//                                     =Moor
+            Maps.Add("AOCTD-Battlegrounds_Farm_p".ToLower());//                                     =Battlegrounds Farm
+            Maps.Add("AOCTD-Battlegrounds_p".ToLower());//                                     =Battlegrounds
+            Maps.Add("AOCTD-Hillside_p".ToLower());//                                     =Hillside
+            Maps.Add("AOCTD-HillsidePyre_p".ToLower());//                                     =Hillside Pyre
+            Maps.Add("AOCTD-Darkforest_XL_p".ToLower());//                                     =Dark Forest
+            Maps.Add("AOCTD-Darkforest_Valley_p".ToLower());//                                     =Dark Forest Valley
+            Maps.Add("AOCTD-Moor_Large_p".ToLower());//                                     =Moor (large)
+            Maps.Add("AOCTD-Ruins_Large_p".ToLower());//                                     =Ruins (large)
+            Maps.Add("AOCTD-Bridge_p".ToLower());//                                     =Bridge
+            Maps.Add("AOCTD-Cistern_p".ToLower());//                                     =Cistern
+            Maps.Add("AOCTD-Courtyard_p".ToLower());//                                     =Courtyard
+            Maps.Add("AOCTD-Dininghall_p".ToLower());//                                     =Dining Hall
+            Maps.Add("AOCTD-FrostPeak_p".ToLower());//                                     =Frost Peak
+            Maps.Add("AOCTD-Mines_p".ToLower());//                                     =Mines
+            Maps.Add("AOCTD-Shipyard_p");
+        }
         private void initCommandLv()
         {
             command_level.Add("kick", 2);
@@ -250,6 +373,7 @@ namespace ChivServ
             command_level.Add("maplist", 2);
             command_level.Add("cancel", 3);
             command_level.Add("perm", 4);
+            command_level.Add("status", 0);
         }
 
         Dictionary<string, string> command_err = new Dictionary<string, string>();
@@ -269,6 +393,7 @@ namespace ChivServ
             command_err.Add("cancel", "/cancel -> 맵 변경이 진행되고 있지 않습니다.");
             command_err.Add("promote", "/promote \"유저아이디\" \"레벨\" -> 자신의 레벨보다 낮아야 합니다.");
             command_err.Add("maplist", "/maplist \"맵이름\" -> 키워드를 가진 맵이 없습니다.");
+            command_err.Add("status", "/status");
         }
 
         

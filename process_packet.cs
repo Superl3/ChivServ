@@ -49,6 +49,9 @@ namespace ChivServ
                 {
                     if (Players[guid].team == Players[vic_guid].team && Players[guid].team != Player.Team.None)
                     {
+                        SAY(guid, "[주의] 방금 당신은 팀킬을 하셨습니다.");
+                        SAY(guid, "[주의] 방금 당신은 팀킬을 하셨습니다.");
+                        SAY(guid, "[주의] 방금 당신은 팀킬을 하셨습니다.");
                         Players[guid].TK += 1;
                         Players[guid].streak = 0;
                     }
@@ -97,6 +100,7 @@ namespace ChivServ
                 KICK_PLAYER(guid, "채팅 금지를 어기셨습니다.");
             if (chat[0] == '/')
                 chat_command(guid, chat);
+            writeChat(guid, chat);
         }
         private void name_changed(Packet p)
         {
@@ -118,14 +122,12 @@ namespace ChivServ
             int idx = p.popInt();
             string map = p.popString().Trim();
             Server.map = map;
-            if (Maps.Count <= idx)
-                Console.WriteLine("잘못된 인덱스 : " + idx);
-            else
-                Console.WriteLine(Maps[idx] + " : " + idx);
+            writeChat(0, map + "맵으로 변경되었습니다.");
         }
         private void round_end(Packet p)
         {
             int win = p.popInt();
+            writeChat(0, (Server.map + "맵에서 " + (Player.Team)win).ToString() + "팀이 승리했습니다.");
         }
 
         private void map_list(Packet p)
@@ -136,8 +138,9 @@ namespace ChivServ
                 Server.status = true;
             }
             
-            string map = p.popString();
-            Maps.Add(map);
+            string map = p.popString().Trim();
+            if(!Maps.Contains(map))
+                Maps.Add(map);
         }
         private void kill(Packet p)
         {
@@ -181,9 +184,13 @@ namespace ChivServ
         {
             int perm = Players[guid].perm;
             string[] vars = command.Split(' ');
-            Console.WriteLine(command);
             switch (vars[0])
             {
+                case "/kd":
+                case "/status":
+                    if (checkInfo(guid, "status", perm, vars.Length >= 1))
+                        command_status(String.Join(" ", vars.Skip<string>(1)), guid);
+                    break;
                 case "/kick":
                 case "/k":
                     if (checkInfo(guid, "kick", perm, vars.Length >= 2))
@@ -211,6 +218,7 @@ namespace ChivServ
                     break;
                 case "/change":
                 case "/map":
+                case "/m":
                     if (checkInfo(guid, "change", perm, vars.Length == 2))
                         command_change(vars[1], guid);
                     break;
@@ -252,7 +260,10 @@ namespace ChivServ
             if (key != "success")
                 SAY(guid, "[오류]" + command_err[key]);
             else
+            {
                 SAY(guid, "[안내]" + command_err[key]);
+                writeChat(0, "[명령어] " + Players[guid].Name + "님이 " + key + "명령어를 사용하셨습니다.");
+            }
         }
 
         private bool getGUID(string name, out long guid)
@@ -266,7 +277,6 @@ namespace ChivServ
             guid = GUIDs[0];
             return true;
         }
-
         private bool getMAP(string map, out string res)
         {
             res = String.Join(" ", Maps.Where(val => val.ToLower().Contains(map.ToLower())));
@@ -286,7 +296,7 @@ namespace ChivServ
 
             if (Players[target_guid].perm < perm)
             {
-                KICK_PLAYER(owner_guid, reason);
+                KICK_PLAYER(target_guid, reason);
                 print_error(owner_guid, "success");
             }
             else
@@ -316,9 +326,9 @@ namespace ChivServ
             }
 
             if (duration <= 0)
-                BAN_PLAYER(owner_guid, reason);
+                BAN_PLAYER(target_guid, reason);
             else
-                TEMP_BAN_PLAYER(owner_guid, reason, duration);
+                TEMP_BAN_PLAYER(target_guid, reason, duration);
 
             print_error(owner_guid, "success");
         }
@@ -370,7 +380,6 @@ namespace ChivServ
             SAY_ALL("[안내] 현재 맵으로 3초 뒤 재시작됩니다.");
             Server.map_change.Start();
             next_map = Server.map;
-            //CHANGE_MAP(Server.map);
             print_error(owner_guid, "success");
         }
         private void command_rotate(long owner_guid)
@@ -378,7 +387,6 @@ namespace ChivServ
             SAY_ALL("[안내] 다음 맵으로 3초 뒤 변경됩니다.");
             Server.map_change.Start();
             next_map = "nextmap";
-            //ROTATE_MAP();
             print_error(owner_guid, "success");
         }
         private void command_change(string map, long owner_guid)
@@ -393,7 +401,6 @@ namespace ChivServ
             SAY_ALL("[안내] " + map + " 맵으로 3초 뒤 변경됩니다.");
             Server.map_change.Start();
             next_map = map;
-            //CHANGE_MAP(map);
             print_error(owner_guid, "success");
         }
         private void command_cancel(long owner_guid)
@@ -448,11 +455,29 @@ namespace ChivServ
             SAY(target_guid, "[안내] 권한이 변경되었습니다.");
             print_error(owner_guid, "success");
         }
-
+        private void command_status(string name, long owner_guid)
+        {
+            long target_guid = owner_guid;
+            if(name != "")
+            {
+                if (!getGUID(name, out target_guid))
+                {
+                    print_error(owner_guid, "name");
+                    return;
+                }
+            }
+            Player p = Players[target_guid];
+            SAY(owner_guid, "[" + p.Name + "님의 전적]");
+            int ratio = 0;
+            if (p.totalD != 0)
+                ratio = p.totalK / p.totalD * 100;
+            SAY(owner_guid, "킬 : " + p.totalK + " 데스 : " + p.totalD + "(" + ratio + "%)");
+        }
         private void command_debug()
         {
             foreach (string Map in Maps)
                 Console.WriteLine(Map);
+            Console.WriteLine("현재 맵 : " + Server.map);
         }
     }
 }

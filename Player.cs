@@ -44,7 +44,7 @@ namespace ChivServ
 
         public override string ToString()
         {
-            char s = '\t';
+            string s = "\t";
             return GUID + s + Name + s + perm + s + totalK + s + totalD + s + TK + s + block ;
         }
 

@@ -17,3 +17,9 @@ getMAP / getGUID fixed
 (write db when server connection ended) done
 
 TODO : log playerchat
+============================
+2018-06-01 10:49 GMT +9:00
+add kd command
+add chat log
+
+TODO : local-server setting

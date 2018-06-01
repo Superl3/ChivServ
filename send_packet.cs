@@ -12,13 +12,15 @@ namespace ChivServ
         {
             Send(new Packet(Packet.Type.SAY_ALL_BIG, msg).encode());
         }
-        public void SAY_ALL(string msg)
+        public void SAY_ALL(string msg, bool log = true)
         {
             Send(new Packet(Packet.Type.SAY_ALL, msg).encode());
+            if (log) writeChat(0, msg);
         }
-        public void SAY(long guid, string msg)
+        public void SAY(long guid, string msg, bool log = false)
         {
             Send(new Packet(Packet.Type.SAY, guid, msg).encode());
+            if (log) writeChat(0, Players[guid] + "에게 보낸 메시지 : " + msg);
         }
         public void CHANGE_MAP(string map)
         {
