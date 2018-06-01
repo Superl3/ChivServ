@@ -28,6 +28,7 @@ namespace ChivServ
             if (autosave)
                 return;
             Players.Clear();
+            chatPath = "";
         }
 
         private bool chkFile(string path)
@@ -46,28 +47,28 @@ namespace ChivServ
         private void getChat()
         {
             chatPath = DateTime.Now.Date.ToString("MM-dd-yyyy") + ".log";
-            if (chkFile(chatPath))
-                return;
         }
         private void writeChat(long guid, string str)
         {
             const string s = "\t";
-            string text = DateTime.Now.Date.ToString("MM-dd-yyyy");
-            if(chatPath == "" || chatPath.Substring(0, chatPath.IndexOf('.')) != text)
+            string text = DateTime.Now.ToString("H:mm:ss");
+            if(chatPath == "" || chatPath.Substring(0, chatPath.IndexOf('.')) !=  DateTime.Now.Date.ToString("MM-dd-yyyy"))
                 getChat();
 
             text += s;
             if (guid != 0)
             {
                 Player p = Players[guid];
-                text += p.team.ToString() + s + p.Name + s + str; text += str;
+                text += p.team.ToString() + s + p.Name + s + str;
             }
             else
                 text += str;
 
+            text += "\r\n"; 
+
             lock (chat_file)
             {
-                File.AppendText(chatPath).WriteLine(text);
+                File.AppendAllText(chatPath, text);
             }
         }
         private void getAcc(string filename)
@@ -86,8 +87,8 @@ namespace ChivServ
 
             foreach (string line in raw)
             {
-                Player p = new Player(line);
-                Players.Add(p.GUID, p);
+                Account acc = new Account(line);
+                Accounts.Add(acc.GUID, acc);
             }
         }
 
@@ -98,9 +99,9 @@ namespace ChivServ
             chkFile(path);
 
             List<string> data = new List<string>();
-            foreach (Player p in Players.Values)
+            foreach (Account acc in Accounts.Values)
             {
-                data.Add(p.ToString());
+                data.Add(acc.ToString());
             }
 
             lock (account_file)

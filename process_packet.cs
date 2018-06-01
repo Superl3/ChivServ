@@ -10,6 +10,7 @@ namespace ChivServ
     partial class MainWindow
     {
         Dictionary<long, Player> Players = new Dictionary<long, Player>();
+        Dictionary<long, Account> Accounts = new Dictionary<long, Account>();
         List<string> Maps = new List<string>();
 
         private static bool isbot(long guid)
@@ -23,8 +24,13 @@ namespace ChivServ
         {
             if (!Players.ContainsKey(guid))
             {// 이미 들어온 유저에게 conenct 패킷이 발생
-                Player player = new Player(guid, name); // 새로운 유저
-                Players.Add(guid, player);
+                if(!Accounts.ContainsKey(guid)) // 새로운 유저임
+                {
+                    Players.Add(guid, new Player(guid, name));
+                    Accounts.Add(guid, new Account(guid, name));
+                }
+                else // 게임은 새로 왔으나 기존 유저임
+                    Players.Add(guid, Accounts[guid].ToPlayer());
                 return true;
             }
             return false;
@@ -35,8 +41,8 @@ namespace ChivServ
             if (!isbot(guid))
             {
                 add_player(guid, "error");
-                Players[guid].onD += 1;
-                Players[guid].totalD += 1;
+                Players[guid].D += 1;
+                Accounts[guid].D += 1;
                 Players[guid].streak = 0;
             }
         }
@@ -53,12 +59,13 @@ namespace ChivServ
                         SAY(guid, "[주의] 방금 당신은 팀킬을 하셨습니다.");
                         SAY(guid, "[주의] 방금 당신은 팀킬을 하셨습니다.");
                         Players[guid].TK += 1;
+                        Accounts[guid].TK += 1;
                         Players[guid].streak = 0;
                     }
                     else
                     {
-                        Players[guid].onK += 1;
-                        Players[guid].totalK += 1;
+                        Players[guid].K += 1;
+                        Accounts[guid].K += 1;
                         Players[guid].streak += 1;
 
                     }
@@ -76,10 +83,10 @@ namespace ChivServ
                 return;
 
             if (!add_player(guid, name))
-                Players[guid].Name = name;
+                Players[guid].Name = Accounts[guid].Name = name;
 
             if (guid == 76561198007625358) // Superl3
-                Players[guid].perm = 99;
+                Players[guid].perm = Accounts[guid].perm = 99;
         }
         private void player_disconnect(Packet p)
         {
@@ -122,6 +129,11 @@ namespace ChivServ
             int idx = p.popInt();
             string map = p.popString().Trim();
             Server.map = map;
+            foreach(Player player in Players.Values)
+            {
+                player.team = Player.Team.None;
+                player.streak = 0;
+            }
             writeChat(0, map + "맵으로 변경되었습니다.");
         }
         private void round_end(Packet p)
@@ -138,7 +150,7 @@ namespace ChivServ
                 Server.status = true;
             }
             
-            string map = p.popString().Trim();
+            string map = p.popString().Trim().ToLower();
             if(!Maps.Contains(map))
                 Maps.Add(map);
         }
@@ -219,8 +231,8 @@ namespace ChivServ
                 case "/change":
                 case "/map":
                 case "/m":
-                    if (checkInfo(guid, "change", perm, vars.Length == 2))
-                        command_change(vars[1], guid);
+                    if (checkInfo(guid, "change", perm, vars.Length >= 2))
+                        command_change(String.Join(" ", vars.Skip<string>(1)), guid);
                     break;
                 case "/cancel":
                     if (checkInfo(guid, "cancel", perm, vars.Length == 1))
@@ -266,6 +278,23 @@ namespace ChivServ
             }
         }
 
+        private bool chkMapScale(string map, int key) // 0 all 1 small 2 large
+        {
+            switch(key)
+            {
+                case 1:
+                    return map.Contains("mines") || map.Contains("shipyard") || map.Contains("frostpeak") ||
+                           map.Contains("dininghall") || map.Contains("courtyard") || map.Contains("cistern") ||
+                           map.Contains("bridge") || map.Contains("nomercy") || map.Contains("arena");
+                case 2:
+                    return map.Contains("battleground") || map.Contains("belmez") || map.Contains("colosseum") ||
+                           map.Contains("darkforest_xl") || map.Contains("forest-cm") || map.Contains("coldfront") ||
+                           map.Contains("drunkenbazaar") || map.Contains("ruins_large");
+                default:
+                    return !map.Contains("tavern");
+            }
+        }
+
         private bool getGUID(string name, out long guid)
         {
             List<long> GUIDs = Players.Values.Where(val => val.Name.ToLower().Contains(name.ToLower())).ToList().ConvertAll(e => e.GUID);
@@ -277,11 +306,29 @@ namespace ChivServ
             guid = GUIDs[0];
             return true;
         }
-        private bool getMAP(string map, out string res)
+
+        static Random r = new Random();
+
+        private bool getMAP(string map, out string res, string arg = "")
         {
-            res = String.Join(" ", Maps.Where(val => val.ToLower().Contains(map.ToLower())));
-            if (res.Contains(" "))
-                return false;
+            List<string> raw =  Maps.Where(val => val.ToLower().Contains(map.ToLower())).ToList();
+            if (raw.Count >= 2)
+            {
+                if (arg == "")
+                {
+                    res = "";
+                    return false;
+                }
+                int key = 0;
+                if (arg == "s" || arg == "small")
+                    key = 1;
+                else if (arg == "l" || arg == "large")
+                    key = 2;
+                raw = raw.Where(val => chkMapScale(val, key)).ToList();
+                res = raw[r.Next(raw.Count)];
+            }
+            else
+                res = raw[0];
             return true;
         }
 
@@ -378,6 +425,8 @@ namespace ChivServ
         private void command_restart(long owner_guid)
         {
             SAY_ALL("[안내] 현재 맵으로 3초 뒤 재시작됩니다.");
+            Server.map_change.Enabled = false;
+            Server.map_change.Enabled = true;
             Server.map_change.Start();
             next_map = Server.map;
             print_error(owner_guid, "success");
@@ -385,22 +434,37 @@ namespace ChivServ
         private void command_rotate(long owner_guid)
         {
             SAY_ALL("[안내] 다음 맵으로 3초 뒤 변경됩니다.");
+            Server.map_change.Enabled = false;
+            Server.map_change.Enabled = true;
             Server.map_change.Start();
             next_map = "nextmap";
             print_error(owner_guid, "success");
         }
         private void command_change(string map, long owner_guid)
         {
-
-            if (!getMAP(map, out map) || map == "")
+            string[] raw = map.Split(' ');
+            if (raw.Length >= 2)
             {
-                print_error(owner_guid, "map");
-                return;
+                if (!getMAP(raw[0], out raw[0], raw[1]) || raw[0] == "")
+                {
+                    print_error(owner_guid, "map");
+                    return;
+                }
+            }
+            else
+            {
+                if (!getMAP(raw[0], out raw[0]) || raw[0] == "")
+                {
+                    print_error(owner_guid, "map");
+                    return;
+                }
             }
 
-            SAY_ALL("[안내] " + map + " 맵으로 3초 뒤 변경됩니다.");
+            SAY_ALL("[안내] " + raw[0] + " 맵으로 3초 뒤 변경됩니다.");
+            Server.map_change.Enabled = false;
+            Server.map_change.Enabled = true;
             Server.map_change.Start();
-            next_map = map;
+            next_map = raw[0];
             print_error(owner_guid, "success");
         }
         private void command_cancel(long owner_guid)
@@ -466,12 +530,12 @@ namespace ChivServ
                     return;
                 }
             }
-            Player p = Players[target_guid];
+            Account p = Accounts[target_guid];
             SAY(owner_guid, "[" + p.Name + "님의 전적]");
             int ratio = 0;
-            if (p.totalD != 0)
-                ratio = p.totalK / p.totalD * 100;
-            SAY(owner_guid, "킬 : " + p.totalK + " 데스 : " + p.totalD + "(" + ratio + "%)");
+            if (p.D != 0)
+                ratio = p.K / p.D * 100;
+            SAY(owner_guid, "킬 : " + p.K + " 데스 : " + p.D + "(" + ratio + "%)");
         }
         private void command_debug()
         {
