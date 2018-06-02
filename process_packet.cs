@@ -13,6 +13,69 @@ namespace ChivServ
         Dictionary<long, Account> Accounts = new Dictionary<long, Account>();
         List<string> Maps = new List<string>();
 
+
+        private static object buffer_lock = new object();
+        private byte[] raw = new byte[BUFFER_SIZE];
+        private void buffer_check(object sender, ElapsedEventArgs e)
+        {
+            while (recvBuf.Count > 2)
+            {
+                Packet p;
+                if (Packet.valid(recvBuf.Take<byte>(2).ToArray()))
+                {
+                    p = new Packet(recvBuf.ToArray());
+                    lock (buffer_lock)
+                    {
+                        recvBuf.RemoveRange(0, p.getPacketSize());
+                    }
+                    process_packet(p);
+                }
+                else
+                    break;
+            }
+        }
+        private void process_packet(Packet p)
+        {
+            switch (p.type)
+            {
+                case Packet.Type.PLAYER_CONNECT:
+                    player_connect(p);
+                    break;
+                case Packet.Type.PLAYER_DISCONNECT:
+                    player_disconnect(p);
+                    break;
+                case Packet.Type.NAME_CHANGED:
+                    name_changed(p);
+                    break;
+                case Packet.Type.TEAM_CHANGED:
+                    team_changed(p);
+                    break;
+                case Packet.Type.PLAYER_CHAT:
+                    player_chat(p);
+                    break;
+                case Packet.Type.PING:
+                    ping(p);
+                    break;
+                case Packet.Type.KILL:
+                    kill(p);
+                    break;
+                case Packet.Type.SUICIDE:
+                    suicide(p);
+                    break;
+                case Packet.Type.MAP_LIST:
+                    map_list(p);
+                    break;
+                case Packet.Type.MAP_CHANGED:
+                    map_changed(p);
+                    break;
+                case Packet.Type.ROUND_END:
+                    round_end(p);
+                    break;
+                default:
+                    break;
+            }
+        }
+
         private static bool isbot(long guid)
         {
             if (guid == 0)
@@ -30,6 +93,7 @@ namespace ChivServ
                     Accounts.Add(guid, new Account(guid, name));
                 }
                 else // 게임은 새로 왔으나 기존 유저임
+
                     Players.Add(guid, Accounts[guid].ToPlayer());
                 return true;
             }
@@ -53,7 +117,7 @@ namespace ChivServ
                 add_player(guid, "error");
                 if (!isbot(vic_guid))
                 {
-                    if (Players[guid].team == Players[vic_guid].team && Players[guid].team != Player.Team.None)
+                    if (Players[guid].team == Players[vic_guid].team && Server.map.Contains("aocffa"))
                     {
                         SAY(guid, "[주의] 방금 당신은 팀킬을 하셨습니다.");
                         SAY(guid, "[주의] 방금 당신은 팀킬을 하셨습니다.");
@@ -246,8 +310,11 @@ namespace ChivServ
                     if (checkInfo(guid, "promote", perm, vars.Length == 3))
                         command_promote(vars[1], vars[2], guid, perm);
                     break;
-                case "/debug":
-                      command_debug();
+                case "/save":
+                    writeDB(true);
+                    break;
+                case "/help":
+                      command_debug(guid);
                       break;
             }
         }
@@ -274,7 +341,6 @@ namespace ChivServ
             else
             {
                 SAY(guid, "[안내]" + command_err[key]);
-                writeChat(0, "[명령어] " + Players[guid].Name + "님이 " + key + "명령어를 사용하셨습니다.");
             }
         }
 
@@ -309,9 +375,14 @@ namespace ChivServ
 
         static Random r = new Random();
 
-        private bool getMAP(string map, out string res, string arg = "")
+        private bool getMAP(string map, out string res, string arg = "", bool maplist = false)
         {
             List<string> raw =  Maps.Where(val => val.ToLower().Contains(map.ToLower())).ToList();
+            if(maplist)
+            {
+                res = String.Join(" ", raw);
+                return true;
+            }
             if (raw.Count >= 2)
             {
                 if (arg == "")
@@ -482,7 +553,7 @@ namespace ChivServ
         private void command_maplist(string map, long owner_guid)
         {
 
-            if (getMAP(map, out map))
+            if (!getMAP(map, out map, "", true))
             {
                 print_error(owner_guid, "maplist");
                 return;
@@ -515,7 +586,7 @@ namespace ChivServ
                 return;
             }
             
-            Players[target_guid].perm = target_perm;
+            Players[target_guid].perm = Accounts[target_guid].perm = target_perm;
             SAY(target_guid, "[안내] 권한이 변경되었습니다.");
             print_error(owner_guid, "success");
         }
@@ -534,14 +605,18 @@ namespace ChivServ
             SAY(owner_guid, "[" + p.Name + "님의 전적]");
             int ratio = 0;
             if (p.D != 0)
-                ratio = p.K / p.D * 100;
+                ratio = (int)((float)p.K / p.D * 100);
             SAY(owner_guid, "킬 : " + p.K + " 데스 : " + p.D + "(" + ratio + "%)");
         }
-        private void command_debug()
+        private void command_debug(long owner_guid)
         {
             foreach (string Map in Maps)
                 Console.WriteLine(Map);
             Console.WriteLine("현재 맵 : " + Server.map);
+            foreach(string command in command_level.Keys)
+            {
+                SAY(owner_guid, "/" + command);
+            }
         }
     }
 }

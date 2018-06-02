@@ -20,7 +20,7 @@ namespace ChivServ
         public void SAY(long guid, string msg, bool log = false)
         {
             Send(new Packet(Packet.Type.SAY, guid, msg).encode());
-            if (log) writeChat(0, Players[guid] + "에게 보낸 메시지 : " + msg);
+            if (log) writeChat(0, Players[guid].Name + "에게 보낸 메시지 : " + msg);
         }
         public void CHANGE_MAP(string map)
         {

@@ -28,3 +28,4 @@ C:\Users\stara\Documents\GitHub\ChivServ\obj\Debug\ChivServ.csproj.GenerateResou
 C:\Users\stara\Documents\GitHub\ChivServ\obj\Debug\ChivServ.csproj.CoreCompileInputs.cache
 C:\Users\stara\Documents\GitHub\ChivServ\obj\Debug\ChivServ.exe
 C:\Users\stara\Documents\GitHub\ChivServ\obj\Debug\ChivServ.pdb
+C:\Users\stara\source\repos\ChivServ\ChivServ\obj\Debug\ChivServ.Init.resources

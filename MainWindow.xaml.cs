@@ -14,14 +14,14 @@ namespace ChivServ
     public partial class MainWindow : Window
     {
         static int BUFFER_SIZE = 4096;
+        List<byte> recvBuf = new List<byte>();
+        Dictionary<string, string> command_err = new Dictionary<string, string>();
         public struct ServerInformation
         {
-            public IPEndPoint ipep;
-            public Socket Sock;
-            public Socket cbSock;
+            public string IP, Port;
             public string password;
             public bool status;
-            public Timer buffer_check;
+            public Network server;
             public Timer map_change;
             public Timer autosave;
             public string map;
@@ -29,190 +29,15 @@ namespace ChivServ
             public int ping_limit;
             public int ping_threshold;
         }
-      
-        public byte[] packet = new byte[BUFFER_SIZE];
-
         ServerInformation Server;
-
-        public void BeginConnect()
-        {
-            try
-            {
-                Console.WriteLine("연결시도");
-                Server.Sock.BeginConnect(Server.ipep, new AsyncCallback(ConnectCallback), Server.Sock);
-            } catch( SocketException se)
-            {
-                Console.WriteLine(se.NativeErrorCode);
-                this.initSocket();// 보통 서버가 죽은경우, 다시 할당해줘야함 소켓에
-            }
-        }
-        public List<byte> recvbuf = new List<byte>();
-        public byte[] pkt = new byte[BUFFER_SIZE];
-        private void ConnectCallback(IAsyncResult iar)
-        {
-            try
-            {
-                Socket sock = (Socket)iar.AsyncState;
-                IPEndPoint ipep = (IPEndPoint)sock.RemoteEndPoint;
-
-                Console.WriteLine("서버 접속 성공");
-
-                sock.EndConnect(iar);
-                Server.cbSock = sock;
-                this.recv(new AsyncCallback(loginCallback));
-            } catch (SocketException se)
-            {
-                if(se.SocketErrorCode == SocketError.NotConnected)
-                {
-                    Console.WriteLine("서버에 연결 실패");
-                }
-                initSocket();
-            }
-        }
-
-        public void Send(byte[] packet)
-        {
-            try
-            {
-                Server.Sock.Send(packet, 0, packet.Length, SocketFlags.None);
-            } catch (SocketException se)
-            {
-                Console.WriteLine("전송실패 + " + se.NativeErrorCode);
-            }
-        }
-        
-        public void recv(AsyncCallback cb)
-        {
-            Server.cbSock.BeginReceive(pkt, 0, pkt.Length, SocketFlags.None,cb, Server.cbSock);
-        }
-
-        private void loginCallback(IAsyncResult iar)
-        {
-            try
-            {
-                Socket sock = (Socket)iar.AsyncState;
-                int nReadSize = sock.EndReceive(iar);
-                Packet loginPkt = new Packet(pkt);
-                if (loginPkt.type == Packet.Type.SERVER_CONNECT) // 유효한 패킷인지 체크 해야함
-                {
-                    loginPkt = new Packet(Packet.Type.PASSWORD,
-                        SHA1Util.SHA1HashStringForUTF8String(string.Concat(
-                        Server.password, new Packet(pkt.Take<byte>((int)pkt.Length).ToArray()).popString())));
-                    this.Send(loginPkt.encode());
-                    this.recv(new AsyncCallback(loginCallback)); // TODO 비밀번호 실패 처리 해야함
-                }
-                else if (pkt.Length > 0 && loginPkt.type == Packet.Type.SERVER_CONNECT_SUCCESS) { 
-                    Server.buffer_check.Start();
-                    Server.cbSock.Blocking = false;
-                    this.recv(new AsyncCallback(recvCallback)); // TODO 비밀번호 실패 처리 해야함
-                }
-            }
-            catch (SocketException se)
-            {
-                Console.WriteLine("logincallback" + se.ErrorCode.ToString());
-                this.initSocket();
-            }
-        }
-
-        private void recvCallback(IAsyncResult iar)
-        {
-            try
-            {
-                Socket sock = (Socket)iar.AsyncState;
-                int nReadSize = sock.EndReceive(iar);
-                if(nReadSize!=0)
-                { // TODO : 한번에 여러 패킷이 한줄로 들어올 경우가 있음 + 예외처리 << 
-                    recvbuf.AddRange(pkt.Take<byte>(nReadSize));
-                    this.recv(new AsyncCallback(recvCallback));
-                }
-                else
-                {
-                    Console.WriteLine("비정상적인 패킷 혹은 연결이 끊겼습니다.");
-                    this.initSocket();
-                }
-            }
-            catch (SocketException se)
-            {
-                Console.WriteLine("recvCallback" + se.ErrorCode.ToString());
-                this.initSocket();
-            }
-        }
-
-        private static object buffer_lock = new object();
-        private byte[] raw = new byte[BUFFER_SIZE];
-        // TODO timeflow를 만들어서 X
-        private void buffer_check(object sender, ElapsedEventArgs e)
-        {
-            while (recvbuf.Count > 2)
-            {
-                Packet p;
-                if (Packet.valid(recvbuf.Take<byte>(2).ToArray()))
-                {
-                    p = new Packet(recvbuf.ToArray());
-                    lock (buffer_lock)
-                    {
-                        recvbuf.RemoveRange(0, p.getPacketSize());
-                    }
-                    process_packet(p);
-                }
-                else
-                    break;
-                
-            }
-
-            // 버퍼에서 첫 패킷 추출 < lock
-            // 유효한 패킷인지 검사
-
-            // 해당 패킷 처리
-        }
-
-        private void process_packet(Packet p)
-        {
-            switch(p.type)
-            {
-                case Packet.Type.PLAYER_CONNECT:
-                    player_connect(p);
-                    break;
-                case Packet.Type.PLAYER_DISCONNECT:
-                    player_disconnect(p);
-                    break;
-                case Packet.Type.NAME_CHANGED:
-                    name_changed(p);
-                    break;
-                case Packet.Type.TEAM_CHANGED:
-                    team_changed(p);
-                    break;
-                case Packet.Type.PLAYER_CHAT:
-                    player_chat(p);
-                    break;
-                case Packet.Type.PING:
-                    ping(p);
-                    break;
-                case Packet.Type.KILL:
-                    kill(p);
-                    break;
-                case Packet.Type.SUICIDE:
-                    suicide(p);
-                    break;
-                case Packet.Type.MAP_LIST:
-                    map_list(p);
-                    break;
-                case Packet.Type.MAP_CHANGED:
-                    map_changed(p);
-                    break;
-                case Packet.Type.ROUND_END:
-                    round_end(p);
-                    break;
-                default:
-                    break;
-            }
-        }
 
         private void initServer()
         {
             Server = new ServerInformation();
 
-            Server.ipep = new IPEndPoint(IPAddress.Parse("127.0.0.1"),27960);
+            //Server.ipep = new IPEndPoint(IPAddress.Parse("127.0.0.1"),27960);
+            Server.IP = "127.0.0.1";
+            Server.Port = "27960";
             Server.password = "l3repus";
 
             Server.ping_limit = 150;
@@ -220,8 +45,6 @@ namespace ChivServ
 
             Server.map = "";
             Server.status = false;
-            Server.buffer_check = new Timer(500);
-            Server.buffer_check.Elapsed += new ElapsedEventHandler(buffer_check);
 
             Server.autosave = new Timer(1800000);
             Server.autosave.AutoReset = true;
@@ -233,9 +56,56 @@ namespace ChivServ
 
             this.readDB();
             this.initMap();
-            this.initSocket();
             this.initCommandLv();
             this.initCommandErr();
+            this.initSocket();
+            
+        }
+
+        private void Recv(object sender, byte[] pkt, int size)
+        {
+            lock (buffer_lock)
+            {
+                recvBuf.AddRange(pkt.Take<byte>(size));
+            }
+        }
+        private void Send(byte[] pkt)
+        {
+            Server.server.Send(pkt);
+        }
+        private void resetSocket(object sender)
+        {
+            if (Server.status)
+            {
+                writeDB(false);
+                readDB();
+                Server.autosave.Stop();
+                Server.map_change.Stop();
+                Server.status = false;
+            }
+            Server.server.StartConnect();
+        }
+        private void initSocket()
+        {
+            Server.server = new Network(Server.IP, Server.Port, Server.password);
+            Server.server.chkBuf.Elapsed += new ElapsedEventHandler(buffer_check);
+            Server.server.ConnectionLost += new Network.ConnectionLostHandler(resetSocket);
+            Server.server.DataReceived += new Network.DataReceivedHandler(Recv);
+            resetSocket(this);
+        }
+
+        public MainWindow()
+        {
+            AppDomain.CurrentDomain.ProcessExit += new EventHandler(OnProcessExit);
+            InitializeComponent();
+            initServer();
+        }
+        void OnProcessExit(object sender, EventArgs e)
+        {
+            if (Server.status)
+            {
+                this.writeDB(false);
+            }
         }
 
         private void initMap()
@@ -372,12 +242,9 @@ namespace ChivServ
             command_level.Add("change", 2);
             command_level.Add("maplist", 2);
             command_level.Add("cancel", 3);
-            command_level.Add("perm", 4);
+            command_level.Add("promote", 4);
             command_level.Add("status", 0);
         }
-
-        Dictionary<string, string> command_err = new Dictionary<string, string>();
-
         private void initCommandErr()
         {
             command_err.Add("success", "해당 명령이 성공적으로 수행되었습니다.");
@@ -396,36 +263,5 @@ namespace ChivServ
             command_err.Add("status", "/status");
         }
 
-        
-
-        private void initSocket()
-        {
-            Server.Sock = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-            if(Server.status)
-            {
-                this.writeDB(false);
-                this.readDB();
-                Server.autosave.Stop();
-                Server.map_change.Stop();
-                Server.status = false;
-            }
-            this.BeginConnect();
-        }
-
-        public MainWindow()
-        {
-            AppDomain.CurrentDomain.ProcessExit += new EventHandler(OnProcessExit);
-            InitializeComponent();
-            initServer();
-        }
-
-        void OnProcessExit(object sender, EventArgs e)
-        {
-            if(Server.status)
-            {
-                this.writeDB(false);
-            }
-        }
     }
 }
- 
